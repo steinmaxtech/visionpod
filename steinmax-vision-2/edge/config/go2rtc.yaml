@@ -1,0 +1,61 @@
+# =============================================================================
+# GO2RTC CONFIGURATION
+# =============================================================================
+# Docs: https://github.com/AlexxIT/go2rtc
+#
+# go2rtc provides:
+#   - WebRTC streaming (low latency live view in browser)
+#   - RTSP relay (multiple consumers from one camera connection)
+#   - Stream conversion (RTSP → WebRTC, HLS, etc.)
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# API SETTINGS
+# -----------------------------------------------------------------------------
+api:
+  listen: ":1984"
+  origin: "*"  # Allow CORS from any origin (restrict in production)
+
+# -----------------------------------------------------------------------------
+# WEBRTC SETTINGS
+# -----------------------------------------------------------------------------
+webrtc:
+  listen: ":8555"
+  candidates:
+    - stun:stun.l.google.com:19302  # Google STUN server
+
+# -----------------------------------------------------------------------------
+# STREAMS
+# -----------------------------------------------------------------------------
+# Define your camera streams here.
+# These can be accessed via:
+#   - WebRTC: http://localhost:1984/stream.html?src=gate_camera
+#   - RTSP: rtsp://localhost:8554/gate_camera
+#   - API: http://localhost:1984/api/streams
+
+streams:
+  # Main gate camera
+  gate_camera:
+    - "${CAMERA_RTSP_URL}"
+  
+  # You can also pull from Frigate's restream (recommended)
+  # This way only Frigate connects to camera, others connect to Frigate
+  gate_camera_frigate:
+    - "rtsp://frigate:8554/gate_camera"
+
+  # Uncomment for second camera
+  # exit_camera:
+  #   - "${CAMERA_2_RTSP_URL}"
+
+# -----------------------------------------------------------------------------
+# RTSP SERVER
+# -----------------------------------------------------------------------------
+rtsp:
+  listen: ":8554"
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+log:
+  level: info  # trace, debug, info, warn, error

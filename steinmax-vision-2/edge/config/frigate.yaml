@@ -1,0 +1,191 @@
+# =============================================================================
+# FRIGATE CONFIGURATION
+# =============================================================================
+# Docs: https://docs.frigate.video/configuration/
+#
+# Frigate handles:
+#   - 24/7 video recording
+#   - Event clips (when motion/objects detected)
+#   - RTSP restreaming (so multiple services can access camera)
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# MQTT (Optional - for Home Assistant integration)
+# -----------------------------------------------------------------------------
+# mqtt:
+#   enabled: false
+#   host: mqtt.server.com
+#   user: mqtt_user
+#   password: mqtt_pass
+
+# -----------------------------------------------------------------------------
+# DATABASE
+# -----------------------------------------------------------------------------
+database:
+  path: /config/frigate.db
+
+# -----------------------------------------------------------------------------
+# DETECTORS
+# -----------------------------------------------------------------------------
+# Configure AI detection. CPU works but is slow.
+# For better performance, add a Coral USB or use GPU.
+
+detectors:
+  cpu:
+    type: cpu
+    num_threads: 2
+
+# Uncomment for Coral USB Accelerator ($60, highly recommended)
+# detectors:
+#   coral:
+#     type: edgetpu
+#     device: usb
+
+# Uncomment for Intel GPU (integrated graphics)
+# detectors:
+#   openvino:
+#     type: openvino
+#     device: AUTO
+
+# -----------------------------------------------------------------------------
+# FFMPEG SETTINGS
+# -----------------------------------------------------------------------------
+ffmpeg:
+  hwaccel_args: preset-vaapi  # Intel GPU, change to preset-nvidia for Nvidia
+
+# For CPU only (no hardware acceleration):
+# ffmpeg:
+#   hwaccel_args: []
+
+# -----------------------------------------------------------------------------
+# RECORDING SETTINGS
+# -----------------------------------------------------------------------------
+record:
+  enabled: true
+  
+  # Keep recordings for 7 days
+  retain:
+    days: 7
+    mode: motion  # Only keep segments with motion
+  
+  # Event clips
+  events:
+    retain:
+      default: 14  # Keep event clips for 14 days
+
+# -----------------------------------------------------------------------------
+# SNAPSHOTS
+# -----------------------------------------------------------------------------
+snapshots:
+  enabled: true
+  timestamp: true
+  bounding_box: true
+  retain:
+    default: 14  # Keep snapshots for 14 days
+
+# -----------------------------------------------------------------------------
+# LIVE VIEW
+# -----------------------------------------------------------------------------
+live:
+  stream_name: gate-camera
+  quality: 1  # 1-10, lower = less bandwidth
+
+# -----------------------------------------------------------------------------
+# CAMERAS
+# -----------------------------------------------------------------------------
+cameras:
+  gate_camera:
+    enabled: true
+    
+    ffmpeg:
+      inputs:
+        # Main stream - high quality for recording
+        - path: ${CAMERA_RTSP_URL}
+          roles:
+            - record
+        
+        # Sub stream - lower quality for detection (faster)
+        # If your camera has a substream, use it here
+        # - path: rtsp://user:pass@IP:554/stream2
+        #   roles:
+        #     - detect
+        
+        # If no substream, use main stream for both
+        - path: ${CAMERA_RTSP_URL}
+          roles:
+            - detect
+
+    # Detection settings
+    detect:
+      enabled: true
+      width: 1280
+      height: 720
+      fps: 5
+
+    # What to detect
+    objects:
+      track:
+        - car
+        - motorcycle
+        - person
+      filters:
+        car:
+          min_score: 0.5
+          threshold: 0.7
+        person:
+          min_score: 0.5
+          threshold: 0.7
+
+    # Motion detection
+    motion:
+      mask:
+        # Mask out areas with constant motion (trees, flags, etc.)
+        # Format: x1,y1,x2,y2,x3,y3,... (polygon coordinates 0-1)
+        # - 0.0,0.0,0.1,0.0,0.1,0.1,0.0,0.1  # Example: top-left corner
+
+    # Recording zones (optional)
+    # zones:
+    #   entry_lane:
+    #     coordinates: 0.3,0.5,0.7,0.5,0.7,1.0,0.3,1.0
+    #     objects:
+    #       - car
+
+    # RTSP restream (so other services can access)
+    rtmp:
+      enabled: false  # Disable RTMP, use RTSP instead
+    
+    # This creates an RTSP stream at rtsp://frigate:8554/gate_camera
+
+# Uncomment for second camera
+# cameras:
+#   exit_camera:
+#     enabled: true
+#     ffmpeg:
+#       inputs:
+#         - path: ${CAMERA_2_RTSP_URL}
+#           roles:
+#             - record
+#             - detect
+#     detect:
+#       enabled: true
+#       width: 1280
+#       height: 720
+#       fps: 5
+#     objects:
+#       track:
+#         - car
+#         - person
+
+# -----------------------------------------------------------------------------
+# UI SETTINGS
+# -----------------------------------------------------------------------------
+ui:
+  live_mode: webrtc  # or mse, jsmpeg
+  timezone: America/New_York  # Change to your timezone
+
+# -----------------------------------------------------------------------------
+# TELEMETRY
+# -----------------------------------------------------------------------------
+telemetry:
+  version_check: true
